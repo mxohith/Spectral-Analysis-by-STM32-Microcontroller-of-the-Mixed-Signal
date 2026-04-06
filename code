@@ -1,1 +1,100 @@
+# ================================
+# IMPORT LIBRARIES
+# ================================
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+from skimage import io
+from skimage.transform import resize
+from scipy.ndimage import median_filter
+from skimage.color import rgb2gray
+from skimage.filters import threshold_otsu
 
+# ================================
+# CHECK FILES
+# ================================
+print(os.listdir())
+
+# ================================
+# LOAD IMAGES (PUT YOUR FILENAMES)
+# ================================
+blue = io.imread('LE07_L1TP_007054_20240118_20240213_02_T1_B2.TIF')
+green = io.imread('LE07_L1TP_007054_20240118_20240213_02_T1_B3.TIF')
+red = io.imread('LE07_L1TP_007054_20240118_20240213_02_T1_B4.TIF')
+pan = io.imread('LE07_L1TP_007054_20240118_20240213_02_T1_B8.TIF')
+
+
+# ================================
+# 🔥 RESIZE EARLY (VERY IMPORTANT)
+# ================================
+target_size = (512, 512)   # reduce size
+
+blue = resize(blue, target_size, preserve_range=True)
+green = resize(green, target_size, preserve_range=True)
+red = resize(red, target_size, preserve_range=True)
+pan = resize(pan, target_size, preserve_range=True)
+
+# ================================
+# NORMALIZE
+# ================================
+blue = blue / np.max(blue)
+green = green / np.max(green)
+red = red / np.max(red)
+pan = pan / np.max(pan)
+
+# ================================
+# MULTISPECTRAL IMAGE
+# ================================
+ms = np.dstack((red, green, blue))
+
+plt.imshow(ms)
+plt.title("Multispectral Image")
+plt.axis('off')
+plt.show()
+
+# ================================
+# PAN IMAGE
+# ================================
+plt.imshow(pan, cmap='gray')
+plt.title("Panchromatic Image")
+plt.axis('off')
+plt.show()
+
+# ================================
+# NOISE REMOVAL
+# ================================
+pan_clean = median_filter(pan, size=3)
+ms_clean = median_filter(ms, size=3)
+
+# ================================
+# FUSION
+# ================================
+fused = (ms_clean + pan_clean[..., None]) / 2
+
+plt.imshow(fused)
+plt.title("Fused Image")
+plt.axis('off')
+plt.show()
+
+# ================================
+# SEGMENTATION
+# ================================
+# ================================
+# MULTI-LEVEL SEGMENTATION
+# ================================
+gray = rgb2gray(fused)
+
+# Define multiple thresholds
+t1 = 0.3
+t2 = 0.6
+
+segmented = np.zeros_like(gray)
+
+segmented[gray < t1] = 1
+segmented[(gray >= t1) & (gray < t2)] = 2
+segmented[gray >= t2] = 3
+
+plt.imshow(segmented, cmap='jet')
+plt.title("Multi-Level Segmented Image")
+plt.axis('off')
+plt.show()
